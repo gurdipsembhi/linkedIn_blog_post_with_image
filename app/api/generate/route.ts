@@ -18,17 +18,29 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  const mode = body.mode === "topic" ? ("topic" as const) : ("news" as const);
   const domain = typeof body.domain === "string" ? body.domain.trim() : "";
+  const topic = typeof body.topic === "string" ? body.topic.trim() : "";
   const notes = typeof body.notes === "string" ? body.notes.trim() : "";
-  if (!domain) {
+  if (mode === "news" && !domain) {
     return NextResponse.json(
       { error: 'A domain is required (e.g. "AI", "fintech", "HR").' },
       { status: 400 }
     );
   }
+  if (mode === "topic" && !topic) {
+    return NextResponse.json(
+      { error: 'A topic is required (e.g. "retrieval-augmented generation").' },
+      { status: 400 }
+    );
+  }
 
   try {
-    const result = await generatePost(domain, notes || undefined);
+    const result = await generatePost(
+      mode === "topic"
+        ? { mode, topic, notes: notes || undefined }
+        : { mode, domain, notes: notes || undefined }
+    );
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Draft generation failed";

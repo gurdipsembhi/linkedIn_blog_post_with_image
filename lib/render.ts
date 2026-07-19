@@ -1,7 +1,13 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { chromium, type Browser } from "playwright-core";
-import type { ExplainerSpec, IconName } from "./explainer";
+import type {
+  ComparisonSpec,
+  ExplainerSpec,
+  IconName,
+  KeyPointsSpec,
+  ProcessSpec,
+} from "./explainer";
 
 export const IMAGES_DIR = path.join(process.cwd(), "data", "images");
 
@@ -33,7 +39,7 @@ function icon(name: IconName): string {
 }
 
 /** Vertical flowchart: boxes → decision diamond (No loops back to the top) → final box. */
-function flowchartSvg(spec: ExplainerSpec): string {
+function flowchartSvg(spec: ProcessSpec): string {
   const width = 430;
   const boxW = 250;
   const boxH = 58;
@@ -100,18 +106,74 @@ function flowchartSvg(spec: ExplainerSpec): string {
   </svg>`;
 }
 
+function processHtml(spec: ProcessSpec): string {
+  const steps = spec.steps
+    .map((step, i) => `<li><span class="num">${i + 1}.</span> ${esc(step)}</li>`)
+    .join("");
+  return `<div class="cols">
+      <div>
+        <h2>How it works?</h2>
+        <ol>${steps}</ol>
+        <h2>${esc(spec.exampleHeading)}</h2>
+        <div class="example">${esc(spec.example)}</div>
+      </div>
+      <div>${flowchartSvg(spec)}</div>
+    </div>`;
+}
+
+function comparisonHtml(spec: ComparisonSpec): string {
+  const cells = [
+    `<div class="vs-cell vs-head"></div>`,
+    `<div class="vs-cell vs-head">${esc(spec.leftHeading)}</div>`,
+    `<div class="vs-cell vs-head">${esc(spec.rightHeading)}</div>`,
+    ...spec.rows.flatMap((row) => [
+      `<div class="vs-cell vs-aspect">${esc(row.aspect)}</div>`,
+      `<div class="vs-cell">${esc(row.left)}</div>`,
+      `<div class="vs-cell">${esc(row.right)}</div>`,
+    ]),
+  ].join("");
+  return `<div class="vs">${cells}</div>
+    <div class="verdict"><b>Verdict:</b> ${esc(spec.verdict)}</div>`;
+}
+
+function keyPointsHtml(spec: KeyPointsSpec): string {
+  const points = spec.points
+    .map(
+      (point, i) =>
+        `<li><span class="num">${i + 1}.</span> <b>${esc(point.heading)}:</b> ${esc(point.detail)}</li>`
+    )
+    .join("");
+  const stat = spec.stat
+    ? `<div class="stat"><div class="stat-value">${esc(spec.stat.value)}</div><div class="stat-caption">${esc(spec.stat.caption)}</div></div>`
+    : "";
+  return `<h2>Key points</h2>
+    <ol class="points">${points}</ol>
+    ${stat}
+    <h2>Why it matters?</h2>
+    <div class="why">${esc(spec.whyItMatters)}</div>`;
+}
+
+function middleHtml(spec: ExplainerSpec): string {
+  switch (spec.layout) {
+    case "comparison":
+      return comparisonHtml(spec);
+    case "keypoints":
+      return keyPointsHtml(spec);
+    default:
+      return processHtml(spec);
+  }
+}
+
 export function renderExplainerHtml(spec: ExplainerSpec, dateLabel: string): string {
   const rings = Array.from({ length: 24 })
     .map(() => `<div class="ring"></div>`)
-    .join("");
-  const steps = spec.steps
-    .map((step, i) => `<li><span class="num">${i + 1}.</span> ${esc(step)}</li>`)
     .join("");
   const useCases = spec.useCases
     .map(
       (u) => `<div class="use">${icon(u.icon)}<div class="use-label">${esc(u.label)}</div></div>`
     )
     .join("");
+  const usesHeading = spec.layout === "keypoints" ? "Who should care?" : "Where it helps?";
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -150,22 +212,33 @@ export function renderExplainerHtml(spec: ExplainerSpec, dateLabel: string): str
   .use-label { font-size: 25px; line-height: 36px; }
   .note { margin-top: 20px; font-size: 26px; line-height: 45px; color: #1d1d3a; }
   .note b { text-decoration: underline; margin-right: 14px; }
+  .vs { display: grid; grid-template-columns: 215px 1fr 1fr; border: 3px solid ${INK};
+    border-radius: 14px; overflow: hidden; margin-top: 12px; background: rgba(251, 250, 245, 0.85); }
+  .vs-cell { padding: 13px 16px; font-size: 25px; line-height: 38px;
+    border-top: 2.5px solid ${INK}; border-left: 2.5px solid ${INK}; }
+  .vs-cell:nth-child(-n+3) { border-top: none; }
+  .vs-cell:nth-child(3n+1) { border-left: none; }
+  .vs-head { font-family: Caveat, cursive; font-weight: 700; font-size: 40px; color: ${RED};
+    text-align: center; }
+  .vs-aspect { font-weight: 700; }
+  .verdict { margin-top: 20px; font-size: 27px; line-height: 45px; }
+  .verdict b { font-family: Caveat, cursive; font-size: 38px; color: ${RED};
+    text-decoration: underline; margin-right: 14px; }
+  .points { list-style: none; font-size: 27px; line-height: 47px; }
+  .points b { text-decoration: underline; }
+  .stat { display: flex; align-items: baseline; justify-content: center; gap: 24px;
+    margin: 14px 0 4px; }
+  .stat-value { font-family: Caveat, cursive; font-weight: 700; font-size: 96px; color: ${RED}; }
+  .stat-caption { font-size: 26px; line-height: 40px; max-width: 430px; }
+  .why { font-size: 27px; line-height: 47px; }
 </style></head>
 <body>
   <div class="page">
     <div class="date">${esc(dateLabel)}</div>
     <h1>${esc(spec.title)}</h1>
     <div class="intro">${esc(spec.intro)}</div>
-    <div class="cols">
-      <div>
-        <h2>How it works?</h2>
-        <ol>${steps}</ol>
-        <h2>${esc(spec.exampleHeading)}</h2>
-        <div class="example">${esc(spec.example)}</div>
-      </div>
-      <div>${flowchartSvg(spec)}</div>
-    </div>
-    <h2>Where it helps?</h2>
+    ${middleHtml(spec)}
+    <h2>${usesHeading}</h2>
     <div class="uses">${useCases}</div>
     <div class="note"><b>Note:</b>${esc(spec.note)} ☆</div>
   </div>

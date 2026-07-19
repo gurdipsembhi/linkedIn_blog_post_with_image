@@ -12,7 +12,9 @@ type Source = { title: string; link: string };
 type ExplainerImage = { file: string; url: string; title: string };
 
 export default function PostComposer() {
+  const [mode, setMode] = useState<"news" | "topic">("news");
   const [domain, setDomain] = useState("");
+  const [topic, setTopic] = useState("");
   const [notes, setNotes] = useState("");
   const [text, setText] = useState("");
   const [source, setSource] = useState<Source | null>(null);
@@ -20,6 +22,8 @@ export default function PostComposer() {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   const busy = status.kind === "working";
+  // What the post is "about" — feeds the image generator and post history.
+  const subject = mode === "news" ? domain : topic;
 
   async function callApi(path: string, payload: object) {
     const res = await fetch(path, {
@@ -33,9 +37,15 @@ export default function PostComposer() {
   }
 
   async function handleGenerate() {
-    setStatus({ kind: "working", label: "Fetching fresh news and drafting…" });
+    setStatus({
+      kind: "working",
+      label:
+        mode === "news"
+          ? "Running agents: fetching news → researching → drafting → fact-checking (can take a minute)…"
+          : "Running agents: gathering references → planning → drafting → fact-checking (can take a minute)…",
+    });
     try {
-      const data = await callApi("/api/generate", { domain, notes });
+      const data = await callApi("/api/generate", { mode, domain, topic, notes });
       setText(data.text);
       setSource(data.source ?? null);
       setStatus({ kind: "idle" });
@@ -47,7 +57,7 @@ export default function PostComposer() {
   async function handleGenerateImage() {
     setStatus({ kind: "working", label: "Drawing the explainer image…" });
     try {
-      const data = await callApi("/api/image", { domain, postText: text });
+      const data = await callApi("/api/image", { domain: subject, postText: text });
       setImage(data);
       setStatus({ kind: "idle" });
     } catch (err) {
@@ -63,7 +73,7 @@ export default function PostComposer() {
     try {
       const data = await callApi("/api/post", {
         text,
-        domain,
+        domain: subject,
         source,
         imageFile: image?.file,
         imageAlt: image?.title,
@@ -79,16 +89,45 @@ export default function PostComposer() {
 
   return (
     <div className="mt-8 flex flex-col gap-4">
+      <div className="flex gap-1 self-start rounded-md border border-zinc-300 p-1 text-sm dark:border-zinc-700">
+        {(["news", "topic"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            className={`rounded px-3 py-1 font-medium ${
+              mode === m
+                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            {m === "news" ? "News post" : "Explain a topic"}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row">
-        <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-          Domain
-          <input
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            placeholder='e.g. "AI", "fintech", "HR"'
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-normal outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </label>
+        {mode === "news" ? (
+          <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
+            Domain
+            <input
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              placeholder='e.g. "AI", "fintech", "HR"'
+              className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-normal outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </label>
+        ) : (
+          <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
+            Topic
+            <input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder='e.g. "retrieval-augmented generation"'
+              className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-normal outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </label>
+        )}
         <label className="flex flex-[2] flex-col gap-1 text-sm font-medium">
           Angle / notes (optional)
           <input
@@ -102,7 +141,7 @@ export default function PostComposer() {
 
       <button
         onClick={handleGenerate}
-        disabled={busy || !domain.trim()}
+        disabled={busy || !subject.trim()}
         className="self-start rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
       >
         Generate draft
