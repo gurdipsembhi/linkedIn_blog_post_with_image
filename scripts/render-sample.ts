@@ -78,6 +78,98 @@ const samples: ExplainerSpec[] = [
     ],
     note: "Exposure was measured from actual AI consumption, not from what companies claim in earnings calls.",
   },
+  {
+    layout: "timeline",
+    title: "The Rise of LLMs",
+    intro:
+      "Large language models did not appear overnight. A few key breakthroughs turned a research idea into the technology reshaping every industry today.",
+    events: [
+      { label: "2017", heading: "The Transformer", detail: "'Attention Is All You Need' replaces recurrence with self-attention" },
+      { label: "2018", heading: "BERT & GPT", detail: "Pre-training on huge text corpora becomes the standard" },
+      { label: "2020", heading: "GPT-3", detail: "175B parameters shows few-shot learning at scale" },
+      { label: "2022", heading: "ChatGPT", detail: "RLHF makes models genuinely usable for the public" },
+      { label: "2024+", heading: "Agents", detail: "Models start using tools and acting autonomously" },
+    ],
+    takeaway: "Each leap came from scale plus a new training idea, not one alone.",
+    useCases: [
+      { icon: "search", label: "Researchers" },
+      { icon: "code", label: "Engineers" },
+      { icon: "bulb", label: "Founders" },
+      { icon: "chart", label: "Investors" },
+    ],
+    note: "The gap between breakthroughs is shrinking — plan for capability, not just today's limits.",
+  },
+  {
+    layout: "dosdonts",
+    title: "Prompting Best Practices",
+    intro:
+      "Most bad AI output comes from bad prompts, not bad models. A few habits separate reliable results from frustrating ones.",
+    dos: [
+      "Give clear role and context",
+      "Show one or two examples",
+      "Ask for a specific format",
+      "Break big tasks into steps",
+      "Tell it to say 'I don't know'",
+    ],
+    donts: [
+      "Pile five questions into one",
+      "Assume it remembers earlier chats",
+      "Trust facts without checking",
+      "Use vague words like 'good'",
+      "Skip testing the prompt",
+    ],
+    goldenRule: "Be specific about what you want and how you want it — precision in, precision out.",
+    useCases: [
+      { icon: "pencil", label: "Writing" },
+      { icon: "code", label: "Coding" },
+      { icon: "search", label: "Research" },
+      { icon: "chat", label: "Chatbots" },
+    ],
+    note: "Save prompts that work as templates — you will reuse them far more than you expect.",
+  },
+  {
+    layout: "mythsfacts",
+    title: "AI Myths, Debunked",
+    intro:
+      "AI is surrounded by hype and fear in equal measure. Separating what is real from what is imagined helps you make better decisions.",
+    pairs: [
+      { myth: "AI understands like a human does", fact: "It predicts likely text from patterns, without real understanding" },
+      { myth: "More data always means better AI", fact: "Data quality and relevance matter far more than raw volume" },
+      { myth: "AI will replace all jobs soon", fact: "It mostly automates tasks, reshaping jobs rather than erasing them" },
+      { myth: "AI answers are always objective", fact: "It inherits the biases in its training data" },
+    ],
+    bottomLine: "Treat AI as a powerful, fallible tool — not an oracle and not magic.",
+    useCases: [
+      { icon: "bulb", label: "Leaders" },
+      { icon: "doc", label: "Educators" },
+      { icon: "chat", label: "Teams" },
+      { icon: "target", label: "Buyers" },
+    ],
+    note: "When someone makes a big AI claim, ask what data and evidence it rests on.",
+  },
+  {
+    layout: "mindmap",
+    title: "The MLOps Landscape",
+    intro:
+      "Shipping machine learning to production is far more than training a model. MLOps covers everything around the model that keeps it working.",
+    center: "MLOps",
+    branches: [
+      { label: "Data", children: ["Versioning", "Validation", "Pipelines"] },
+      { label: "Training", children: ["Experiments", "Tuning", "Registry"] },
+      { label: "Serving", children: ["APIs", "Batch", "Scaling"] },
+      { label: "Monitoring", children: ["Drift", "Latency", "Alerts"] },
+      { label: "Governance", children: ["Access", "Audit", "Lineage"] },
+      { label: "CI/CD", children: ["Testing", "Rollout"] },
+    ],
+    insight: "The model is maybe 10% of the work — the other 90% is the system around it.",
+    useCases: [
+      { icon: "code", label: "ML Engineers" },
+      { icon: "chart", label: "Data Teams" },
+      { icon: "target", label: "Platform Leads" },
+      { icon: "doc", label: "Compliance" },
+    ],
+    note: "Start with monitoring and data versioning — they catch the failures that hurt most in production.",
+  },
 ];
 
 async function main() {
