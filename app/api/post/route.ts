@@ -1,9 +1,5 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
-import { recordPost } from "@/lib/history";
-import { createPost, uploadImage } from "@/lib/linkedin";
-import { IMAGES_DIR } from "@/lib/render";
+import { publishPost } from "@/lib/publish";
 import { getSession } from "@/lib/session";
 
 export async function POST(request: Request) {
@@ -32,41 +28,20 @@ export async function POST(request: Request) {
     body.source && typeof body.source.link === "string" && typeof body.source.title === "string"
       ? { title: body.source.title, link: body.source.link }
       : null;
-  const imageFile = typeof body.imageFile === "string" ? path.basename(body.imageFile) : "";
-  const imageAlt = typeof body.imageAlt === "string" ? body.imageAlt : "";
+  const imageFile = typeof body.imageFile === "string" ? body.imageFile : null;
+  const imageAlt = typeof body.imageAlt === "string" ? body.imageAlt : null;
 
   try {
-    let image: { urn: string; altText?: string } | undefined;
-    if (imageFile) {
-      let data: Buffer;
-      try {
-        data = await readFile(path.join(IMAGES_DIR, imageFile));
-      } catch {
-        return NextResponse.json(
-          { error: "Attached image file not found — regenerate the image and try again." },
-          { status: 400 }
-        );
-      }
-      const urn = await uploadImage(session.accessToken, session.personId, data);
-      image = { urn, ...(imageAlt && { altText: `Explainer: ${imageAlt}` }) };
-    }
-
-    const postUrn = await createPost(session.accessToken, session.personId, text, image);
-    try {
-      await recordPost({
-        postedAt: new Date().toISOString(),
-        domain,
-        postUrn,
-        sourceTitle: source?.title ?? null,
-        sourceLink: source?.link ?? null,
-      });
-    } catch (historyErr) {
-      console.error("Post published but history write failed:", historyErr);
-    }
-    return NextResponse.json({
-      postUrn,
-      url: postUrn ? `https://www.linkedin.com/feed/update/${postUrn}/` : null,
+    const result = await publishPost({
+      accessToken: session.accessToken,
+      personId: session.personId,
+      text,
+      domain,
+      source,
+      imageFile,
+      imageAlt,
     });
+    return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to publish post";
     return NextResponse.json({ error: message }, { status: 502 });

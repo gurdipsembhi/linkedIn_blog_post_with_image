@@ -174,8 +174,9 @@ const samples: ExplainerSpec[] = [
 
 async function main() {
   for (const sample of samples) {
-    const file = await renderExplainerPng(sample);
-    console.log(`rendered (${sample.layout}): data/images/${file}`);
+    const { file, overflowPx } = await renderExplainerPng(sample);
+    const overflow = overflowPx > 0 ? ` (overflow ${overflowPx}px!)` : "";
+    console.log(`rendered (${sample.layout}): data/images/${file}${overflow}`);
   }
 }
 main();

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveAccount } from "@/lib/account";
 import { exchangeCodeForToken, getUserInfo } from "@/lib/linkedin";
 import { SESSION_COOKIE, sessionCookieOptions, type Session } from "@/lib/session";
 
@@ -27,6 +28,8 @@ export async function GET(request: NextRequest) {
       personId: user.sub,
       name: user.name,
     };
+    // Also persist server-side so the scheduler can post without the browser cookie.
+    await saveAccount(session);
     const response = NextResponse.redirect(new URL("/", url));
     response.cookies.delete("li_oauth_state");
     response.cookies.set(

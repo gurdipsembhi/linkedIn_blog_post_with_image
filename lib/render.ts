@@ -417,8 +417,14 @@ async function launchBrowser(): Promise<Browser> {
   }
 }
 
-/** Renders the spec to a PNG in data/images and returns the file name. */
-export async function renderExplainerPng(spec: ExplainerSpec): Promise<string> {
+export type RenderResult = {
+  file: string;
+  /** Pixels the page content overflows past the fixed 1350px height (0 = fits). */
+  overflowPx: number;
+};
+
+/** Renders the spec to a PNG in data/images and reports whether the content overflowed the page. */
+export async function renderExplainerPng(spec: ExplainerSpec): Promise<RenderResult> {
   const dateLabel = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
@@ -434,11 +440,17 @@ export async function renderExplainerPng(spec: ExplainerSpec): Promise<string> {
     const page = await context.newPage();
     await page.setContent(renderExplainerHtml(spec, dateLabel), { waitUntil: "networkidle" });
     await page.evaluate(() => document.fonts.ready);
+    // The page clips overflow (overflow: hidden), so measure it before the screenshot —
+    // this is the cheap, deterministic signal that text was cut off.
+    const overflowPx = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>(".page");
+      return el ? Math.max(0, Math.round(el.scrollHeight - el.clientHeight)) : 0;
+    });
     const buffer = await page.screenshot({ type: "png" });
     await mkdir(IMAGES_DIR, { recursive: true });
     const file = `explainer-${Date.now()}.png`;
     await writeFile(path.join(IMAGES_DIR, file), buffer);
-    return file;
+    return { file, overflowPx };
   } finally {
     await browser.close();
   }
