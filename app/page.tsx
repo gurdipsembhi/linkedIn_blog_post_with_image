@@ -1,4 +1,6 @@
+import { getUsableAccount, saveAccount } from "@/lib/account";
 import PostComposer from "@/components/post-composer";
+import Scheduler from "@/components/scheduler";
 import { getSession } from "@/lib/session";
 
 export default async function Home({
@@ -8,6 +10,12 @@ export default async function Home({
 }) {
   const session = await getSession();
   const { error } = await searchParams;
+
+  // Backfill the server-side token store from a valid browser session, so accounts
+  // connected before that store existed get the scheduler without a full reconnect.
+  if (session && !(await getUsableAccount())) {
+    await saveAccount(session);
+  }
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
@@ -33,6 +41,7 @@ export default async function Home({
             </a>
           </div>
           <PostComposer />
+          <Scheduler />
         </>
       ) : (
         <a

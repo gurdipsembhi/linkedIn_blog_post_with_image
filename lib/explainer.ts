@@ -135,7 +135,7 @@ const layoutSchemas = {
       .describe("Heading for the example section, e.g. 'Example Prompt:'"),
     example: z
       .string()
-      .describe("A concrete example in 30-55 words, quoted if it is a prompt or phrase"),
+      .describe("A concrete example in 20-38 words, quoted if it is a prompt or phrase"),
   }),
   comparison: z.object({
     ...baseFields,
@@ -282,22 +282,43 @@ ${SHARED_RULES}`,
 async function callSpec<SCHEMA extends z.ZodType>(
   schema: SCHEMA,
   layout: LayoutName,
-  context: string
+  context: string,
+  critique?: string | null
 ): Promise<z.infer<SCHEMA>> {
+  const revision = critique
+    ? `\n\nA previous version of this page was rejected in visual review. Fix these problems, mainly by making every string shorter and reducing the number of items so nothing is cut off:\n${critique}`
+    : "";
   const { output } = await generateText({
     model: model(),
     output: Output.object({ schema }),
     system: SPEC_PROMPTS[layout],
-    prompt: `${context}\n\nDesign the page for this post.`,
+    prompt: `${context}\n\nDesign the page for this post.${revision}`,
   });
   return output as z.infer<SCHEMA>;
 }
 
-/** Distills the post into the content for one specific layout (array caps enforced by slicing). */
-async function buildSpec(layout: LayoutName, context: string): Promise<ExplainerSpec> {
+/** Builds the review/render context block for a post. */
+export function buildContext(domain: string, postText: string): string {
+  return `Domain: ${domain}
+
+The LinkedIn post this image will accompany:
+---
+${postText}
+---`;
+}
+
+/**
+ * Distills the post into the content for one specific layout (array caps enforced by slicing).
+ * When `critique` is set, the spec is regenerated to fix the issues a prior render was rejected for.
+ */
+export async function buildSpec(
+  layout: LayoutName,
+  context: string,
+  critique?: string | null
+): Promise<ExplainerSpec> {
   switch (layout) {
     case "comparison": {
-      const spec = await callSpec(layoutSchemas.comparison, "comparison", context);
+      const spec = await callSpec(layoutSchemas.comparison, "comparison", context, critique);
       return {
         layout: "comparison",
         ...spec,
@@ -306,7 +327,7 @@ async function buildSpec(layout: LayoutName, context: string): Promise<Explainer
       };
     }
     case "keypoints": {
-      const spec = await callSpec(layoutSchemas.keypoints, "keypoints", context);
+      const spec = await callSpec(layoutSchemas.keypoints, "keypoints", context, critique);
       return {
         layout: "keypoints",
         ...spec,
@@ -315,7 +336,7 @@ async function buildSpec(layout: LayoutName, context: string): Promise<Explainer
       };
     }
     case "timeline": {
-      const spec = await callSpec(layoutSchemas.timeline, "timeline", context);
+      const spec = await callSpec(layoutSchemas.timeline, "timeline", context, critique);
       return {
         layout: "timeline",
         ...spec,
@@ -324,7 +345,7 @@ async function buildSpec(layout: LayoutName, context: string): Promise<Explainer
       };
     }
     case "dosdonts": {
-      const spec = await callSpec(layoutSchemas.dosdonts, "dosdonts", context);
+      const spec = await callSpec(layoutSchemas.dosdonts, "dosdonts", context, critique);
       return {
         layout: "dosdonts",
         ...spec,
@@ -334,7 +355,7 @@ async function buildSpec(layout: LayoutName, context: string): Promise<Explainer
       };
     }
     case "mythsfacts": {
-      const spec = await callSpec(layoutSchemas.mythsfacts, "mythsfacts", context);
+      const spec = await callSpec(layoutSchemas.mythsfacts, "mythsfacts", context, critique);
       return {
         layout: "mythsfacts",
         ...spec,
@@ -343,7 +364,7 @@ async function buildSpec(layout: LayoutName, context: string): Promise<Explainer
       };
     }
     case "mindmap": {
-      const spec = await callSpec(layoutSchemas.mindmap, "mindmap", context);
+      const spec = await callSpec(layoutSchemas.mindmap, "mindmap", context, critique);
       return {
         layout: "mindmap",
         ...spec,
@@ -354,7 +375,7 @@ async function buildSpec(layout: LayoutName, context: string): Promise<Explainer
       };
     }
     default: {
-      const spec = await callSpec(layoutSchemas.process, "process", context);
+      const spec = await callSpec(layoutSchemas.process, "process", context, critique);
       return {
         layout: "process",
         ...spec,
@@ -367,7 +388,7 @@ async function buildSpec(layout: LayoutName, context: string): Promise<Explainer
 }
 
 /** Asks the model which layout best fits the post. */
-async function pickLayout(context: string): Promise<LayoutName> {
+export async function pickLayout(context: string): Promise<LayoutName> {
   const { output } = await generateText({
     model: model(),
     output: Output.object({ schema: z.object({ layout: z.enum(LAYOUTS) }) }),
@@ -375,23 +396,4 @@ async function pickLayout(context: string): Promise<LayoutName> {
     prompt: context,
   });
   return output.layout;
-}
-
-/**
- * Distills the post into a layout's content. When `layout` is given, that template is used
- * as-is; otherwise the model picks the layout that best fits the post.
- */
-export async function generateExplainerSpec(
-  domain: string,
-  postText: string,
-  layout?: LayoutName
-): Promise<ExplainerSpec> {
-  const context = `Domain: ${domain}
-
-The LinkedIn post this image will accompany:
----
-${postText}
----`;
-
-  return buildSpec(layout ?? (await pickLayout(context)), context);
 }

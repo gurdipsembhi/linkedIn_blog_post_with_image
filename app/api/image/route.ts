@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { generateExplainerSpec, LAYOUTS, type LayoutName } from "@/lib/explainer";
-import { renderExplainerPng } from "@/lib/render";
+import { LAYOUTS, type LayoutName } from "@/lib/explainer";
+import { generateExplainerImage } from "@/lib/image-pipeline";
 import { getSession } from "@/lib/session";
 
 export async function POST(request: Request) {
@@ -31,9 +31,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const spec = await generateExplainerSpec(domain || "general", postText, layout);
-    const file = await renderExplainerPng(spec);
-    return NextResponse.json({ file, url: `/api/image/${file}`, title: spec.title });
+    const { file, title, score } = await generateExplainerImage(domain || "general", postText, layout);
+    return NextResponse.json({ file, url: `/api/image/${file}`, title, score });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Image generation failed";
     return NextResponse.json({ error: message }, { status: 502 });

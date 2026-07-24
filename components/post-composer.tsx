@@ -9,7 +9,7 @@ type Status =
   | { kind: "published"; url: string | null };
 
 type Source = { title: string; link: string };
-type ExplainerImage = { file: string; url: string; title: string };
+type ExplainerImage = { file: string; url: string; title: string; score?: number };
 
 // "auto" lets the model pick the layout; the rest map to lib/explainer LAYOUTS.
 const TEMPLATES = [
@@ -69,7 +69,10 @@ export default function PostComposer() {
   }
 
   async function handleGenerateImage() {
-    setStatus({ kind: "working", label: "Drawing the explainer image…" });
+    setStatus({
+      kind: "working",
+      label: "Drawing the explainer image, then reviewing and refining it (can take a minute)…",
+    });
     try {
       const data = await callApi("/api/image", {
         domain: subject,
@@ -226,6 +229,12 @@ export default function PostComposer() {
               alt={`Explainer: ${image.title}`}
               className="w-72 rounded-md border border-zinc-300 dark:border-zinc-700"
             />
+            {typeof image.score === "number" && (
+              <span className="text-xs text-zinc-500">
+                Review score: {image.score}/10
+                {image.score < 7 && " — consider regenerating"}
+              </span>
+            )}
             <button
               onClick={() => setImage(null)}
               className="self-start text-xs text-zinc-500 underline hover:text-zinc-700"
