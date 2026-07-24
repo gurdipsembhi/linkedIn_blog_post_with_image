@@ -11,6 +11,19 @@ type Status =
 type Source = { title: string; link: string };
 type ExplainerImage = { file: string; url: string; title: string };
 
+// "auto" lets the model pick the layout; the rest map to lib/explainer LAYOUTS.
+const TEMPLATES = [
+  { value: "auto", label: "Auto (let AI pick)" },
+  { value: "process", label: "How it works (process)" },
+  { value: "comparison", label: "Comparison" },
+  { value: "keypoints", label: "Key points" },
+  { value: "timeline", label: "Timeline" },
+  { value: "dosdonts", label: "Do's & Don'ts" },
+  { value: "mythsfacts", label: "Myths vs Facts" },
+  { value: "mindmap", label: "Mind map" },
+] as const;
+type Template = (typeof TEMPLATES)[number]["value"];
+
 export default function PostComposer() {
   const [mode, setMode] = useState<"news" | "topic">("news");
   const [domain, setDomain] = useState("");
@@ -19,6 +32,7 @@ export default function PostComposer() {
   const [text, setText] = useState("");
   const [source, setSource] = useState<Source | null>(null);
   const [image, setImage] = useState<ExplainerImage | null>(null);
+  const [template, setTemplate] = useState<Template>("auto");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   const busy = status.kind === "working";
@@ -57,7 +71,12 @@ export default function PostComposer() {
   async function handleGenerateImage() {
     setStatus({ kind: "working", label: "Drawing the explainer image…" });
     try {
-      const data = await callApi("/api/image", { domain: subject, postText: text });
+      const data = await callApi("/api/image", {
+        domain: subject,
+        postText: text,
+        // Omit for "auto" so the API falls back to model-picked layout.
+        layout: template === "auto" ? undefined : template,
+      });
       setImage(data);
       setStatus({ kind: "idle" });
     } catch (err) {
@@ -175,13 +194,30 @@ export default function PostComposer() {
       )}
 
       <div className="flex flex-col gap-2">
-        <button
-          onClick={handleGenerateImage}
-          disabled={busy || !text.trim()}
-          className="self-start rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-        >
-          {image ? "Regenerate explainer image" : "Generate explainer image"}
-        </button>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Image template
+            <select
+              value={template}
+              onChange={(e) => setTemplate(e.target.value as Template)}
+              disabled={busy}
+              className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-normal outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900"
+            >
+              {TEMPLATES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            onClick={handleGenerateImage}
+            disabled={busy || !text.trim()}
+            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+          >
+            {image ? "Regenerate explainer image" : "Generate explainer image"}
+          </button>
+        </div>
         {image && (
           <div className="flex flex-col gap-1">
             {/* eslint-disable-next-line @next/next/no-img-element -- runtime-generated file served by our API route */}

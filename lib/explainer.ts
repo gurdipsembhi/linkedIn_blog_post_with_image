@@ -293,26 +293,9 @@ async function callSpec<SCHEMA extends z.ZodType>(
   return output as z.infer<SCHEMA>;
 }
 
-/** Picks the layout that fits the post, then distills the post into that layout's content. */
-export async function generateExplainerSpec(
-  domain: string,
-  postText: string
-): Promise<ExplainerSpec> {
-  const context = `Domain: ${domain}
-
-The LinkedIn post this image will accompany:
----
-${postText}
----`;
-
-  const { output } = await generateText({
-    model: model(),
-    output: Output.object({ schema: z.object({ layout: z.enum(LAYOUTS) }) }),
-    system: LAYOUT_PICKER_PROMPT,
-    prompt: context,
-  });
-
-  switch (output.layout) {
+/** Distills the post into the content for one specific layout (array caps enforced by slicing). */
+async function buildSpec(layout: LayoutName, context: string): Promise<ExplainerSpec> {
+  switch (layout) {
     case "comparison": {
       const spec = await callSpec(layoutSchemas.comparison, "comparison", context);
       return {
@@ -381,4 +364,34 @@ ${postText}
       };
     }
   }
+}
+
+/** Asks the model which layout best fits the post. */
+async function pickLayout(context: string): Promise<LayoutName> {
+  const { output } = await generateText({
+    model: model(),
+    output: Output.object({ schema: z.object({ layout: z.enum(LAYOUTS) }) }),
+    system: LAYOUT_PICKER_PROMPT,
+    prompt: context,
+  });
+  return output.layout;
+}
+
+/**
+ * Distills the post into a layout's content. When `layout` is given, that template is used
+ * as-is; otherwise the model picks the layout that best fits the post.
+ */
+export async function generateExplainerSpec(
+  domain: string,
+  postText: string,
+  layout?: LayoutName
+): Promise<ExplainerSpec> {
+  const context = `Domain: ${domain}
+
+The LinkedIn post this image will accompany:
+---
+${postText}
+---`;
+
+  return buildSpec(layout ?? (await pickLayout(context)), context);
 }

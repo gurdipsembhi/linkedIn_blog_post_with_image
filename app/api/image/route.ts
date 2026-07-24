@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateExplainerSpec } from "@/lib/explainer";
+import { generateExplainerSpec, LAYOUTS, type LayoutName } from "@/lib/explainer";
 import { renderExplainerPng } from "@/lib/render";
 import { getSession } from "@/lib/session";
 
@@ -21,6 +21,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const domain = typeof body.domain === "string" ? body.domain.trim() : "";
   const postText = typeof body.postText === "string" ? body.postText.trim() : "";
+  // Optional explicit template; anything else (incl. "auto"/missing) lets the model pick.
+  const layout = LAYOUTS.includes(body.layout) ? (body.layout as LayoutName) : undefined;
   if (!postText) {
     return NextResponse.json(
       { error: "Generate or write the post text first — the image explains it." },
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const spec = await generateExplainerSpec(domain || "general", postText);
+    const spec = await generateExplainerSpec(domain || "general", postText, layout);
     const file = await renderExplainerPng(spec);
     return NextResponse.json({ file, url: `/api/image/${file}`, title: spec.title });
   } catch (err) {
