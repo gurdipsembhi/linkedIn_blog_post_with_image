@@ -1,6 +1,4 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
-import { DATA_DIR } from "./data-dir";
+import { kvGet, kvSet } from "./kv";
 
 export type HistoryEntry = {
   postedAt: string;
@@ -10,23 +8,17 @@ export type HistoryEntry = {
   sourceLink: string | null;
 };
 
-// Local-file history is a stopgap until the database lands (roadmap item 3).
-// It is ephemeral on serverless deploys — fine for local development only.
-const FILE = path.join(DATA_DIR, "post-history.json");
+// Durable post history (via lib/kv — Upstash Redis on Vercel). Feeds dedupe.
+const KEY = "history";
 
 export async function readHistory(): Promise<HistoryEntry[]> {
-  try {
-    return JSON.parse(await readFile(FILE, "utf8"));
-  } catch {
-    return [];
-  }
+  return (await kvGet<HistoryEntry[]>(KEY)) ?? [];
 }
 
 export async function recordPost(entry: HistoryEntry): Promise<void> {
   const history = await readHistory();
   history.push(entry);
-  await mkdir(path.dirname(FILE), { recursive: true });
-  await writeFile(FILE, JSON.stringify(history, null, 2));
+  await kvSet(KEY, history);
 }
 
 /** Links of articles that already produced a published post, for dedupe. */

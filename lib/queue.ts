@@ -1,10 +1,8 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
-import { DATA_DIR } from "./data-dir";
+import { kvGet, kvSet } from "./kv";
 
-// Local-file review queue (stopgap until the database lands). Holds drafts the
+// Durable review queue (via lib/kv — Upstash Redis on Vercel). Holds drafts the
 // scheduler produced that are waiting for the user to approve or discard.
-const FILE = path.join(DATA_DIR, "queue.json");
+const KEY = "queue";
 
 export type QueuedDraft = {
   id: string;
@@ -17,16 +15,11 @@ export type QueuedDraft = {
 };
 
 export async function readQueue(): Promise<QueuedDraft[]> {
-  try {
-    return JSON.parse(await readFile(FILE, "utf8"));
-  } catch {
-    return [];
-  }
+  return (await kvGet<QueuedDraft[]>(KEY)) ?? [];
 }
 
 async function writeQueue(items: QueuedDraft[]): Promise<void> {
-  await mkdir(path.dirname(FILE), { recursive: true });
-  await writeFile(FILE, JSON.stringify(items, null, 2));
+  await kvSet(KEY, items);
 }
 
 export async function enqueueDraft(draft: Omit<QueuedDraft, "id" | "createdAt">): Promise<QueuedDraft> {

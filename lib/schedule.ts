@@ -1,9 +1,7 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
-import { DATA_DIR } from "./data-dir";
+import { kvGet, kvSet } from "./kv";
 
-// Local-file schedule config (stopgap until the database lands). Single-user by design.
-const FILE = path.join(DATA_DIR, "schedule.json");
+// Durable schedule config (via lib/kv — Upstash Redis on Vercel). Single-user by design.
+const KEY = "schedule";
 
 export type Schedule = {
   enabled: boolean;
@@ -35,17 +33,13 @@ const DEFAULTS: Schedule = {
 };
 
 export async function getSchedule(): Promise<Schedule> {
-  try {
-    return { ...DEFAULTS, ...JSON.parse(await readFile(FILE, "utf8")) };
-  } catch {
-    return { ...DEFAULTS };
-  }
+  const stored = await kvGet<Partial<Schedule>>(KEY);
+  return { ...DEFAULTS, ...(stored ?? {}) };
 }
 
 export async function saveSchedule(patch: Partial<Schedule>): Promise<Schedule> {
   const next = { ...(await getSchedule()), ...patch };
-  await mkdir(path.dirname(FILE), { recursive: true });
-  await writeFile(FILE, JSON.stringify(next, null, 2));
+  await kvSet(KEY, next);
   return next;
 }
 
