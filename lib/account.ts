@@ -1,5 +1,6 @@
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
+import { DATA_DIR } from "./data-dir";
 
 export type Account = {
   accessToken: string;
@@ -11,11 +12,18 @@ export type Account = {
 // Server-side token store so the scheduler can post without a browser cookie.
 // Local-file stopgap (same as post-history) until the database lands — ephemeral
 // on serverless deploys, and single-user by design. Treat as a secret: gitignored.
-const FILE = path.join(process.cwd(), "data", "account.json");
+const FILE = path.join(DATA_DIR, "account.json");
 
 export async function saveAccount(account: Account): Promise<void> {
-  await mkdir(path.dirname(FILE), { recursive: true });
-  await writeFile(FILE, JSON.stringify(account, null, 2));
+  // Best-effort: this only feeds the server-side scheduler. The interactive user is
+  // authenticated by the session cookie, so a failed write here must never block login
+  // (e.g. read-only filesystems). Log and move on rather than throwing.
+  try {
+    await mkdir(path.dirname(FILE), { recursive: true });
+    await writeFile(FILE, JSON.stringify(account, null, 2));
+  } catch (err) {
+    console.error("saveAccount failed (continuing; scheduler won't have a token):", err);
+  }
 }
 
 /** Persisted account, or null if none. Does NOT check expiry — callers decide. */

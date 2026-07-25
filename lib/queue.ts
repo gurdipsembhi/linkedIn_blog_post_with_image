@@ -1,9 +1,10 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { DATA_DIR } from "./data-dir";
 
 // Local-file review queue (stopgap until the database lands). Holds drafts the
 // scheduler produced that are waiting for the user to approve or discard.
-const FILE = path.join(process.cwd(), "data", "queue.json");
+const FILE = path.join(DATA_DIR, "queue.json");
 
 export type QueuedDraft = {
   id: string;

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { DATA_DIR } from "./data-dir";
 
 export type HistoryEntry = {
   postedAt: string;
@@ -11,7 +12,7 @@ export type HistoryEntry = {
 
 // Local-file history is a stopgap until the database lands (roadmap item 3).
 // It is ephemeral on serverless deploys — fine for local development only.
-const FILE = path.join(process.cwd(), "data", "post-history.json");
+const FILE = path.join(DATA_DIR, "post-history.json");
 
 export async function readHistory(): Promise<HistoryEntry[]> {
   try {

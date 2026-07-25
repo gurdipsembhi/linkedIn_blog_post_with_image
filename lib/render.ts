@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { chromium, type Browser } from "playwright-core";
+import { DATA_DIR } from "./data-dir";
 import type {
   ComparisonSpec,
   DosDontsSpec,
@@ -13,7 +14,7 @@ import type {
   TimelineSpec,
 } from "./explainer";
 
-export const IMAGES_DIR = path.join(process.cwd(), "data", "images");
+export const IMAGES_DIR = path.join(DATA_DIR, "images");
 
 const INK = "#23357d";
 const RED = "#c0392b";

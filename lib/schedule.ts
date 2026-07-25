@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { DATA_DIR } from "./data-dir";
 
 // Local-file schedule config (stopgap until the database lands). Single-user by design.
-const FILE = path.join(process.cwd(), "data", "schedule.json");
+const FILE = path.join(DATA_DIR, "schedule.json");
 
 export type Schedule = {
   enabled: boolean;
