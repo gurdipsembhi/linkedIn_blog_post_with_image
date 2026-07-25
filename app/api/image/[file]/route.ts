@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
-import { IMAGES_DIR } from "@/lib/render";
+import { IMAGES_DIR } from "@/lib/data-dir";
 import { getSession } from "@/lib/session";
 
 export async function GET(

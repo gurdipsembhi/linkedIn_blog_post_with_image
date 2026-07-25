@@ -9,3 +9,9 @@ import path from "path";
 export const DATA_DIR = process.env.VERCEL
   ? path.join("/tmp", "data")
   : path.join(process.cwd(), "data");
+
+// Where rendered explainer PNGs are written/read. Kept here (not in lib/render.ts)
+// so that publish/serve routes can reference the path WITHOUT importing render.ts,
+// which pulls in playwright-core — a heavy external module that must not load in
+// routes that never render (it 500s them on Vercel via output-file-tracing gaps).
+export const IMAGES_DIR = path.join(DATA_DIR, "images");

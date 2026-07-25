@@ -11,7 +11,8 @@ import {
   type ExplainerSpec,
   type LayoutName,
 } from "./explainer";
-import { IMAGES_DIR, renderExplainerPng } from "./render";
+import { IMAGES_DIR } from "./data-dir";
+import { renderExplainerPng } from "./render";
 
 // Render → vision-review → (revise | accept) loop, mirroring the post pipeline's fact-check loop.
 

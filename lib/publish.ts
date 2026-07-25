@@ -1,8 +1,8 @@
 import { readFile } from "fs/promises";
 import path from "path";
+import { IMAGES_DIR } from "./data-dir";
 import { recordPost } from "./history";
 import { createPost, uploadImage } from "./linkedin";
-import { IMAGES_DIR } from "./render";
 
 export type PublishInput = {
   accessToken: string;
