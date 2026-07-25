@@ -404,8 +404,20 @@ export function renderExplainerHtml(spec: ExplainerSpec, dateLabel: string): str
 }
 
 async function launchBrowser(): Promise<Browser> {
+  // Vercel serverless has no system Chrome, and playwright-core bundles no browser
+  // of its own, so use the Lambda-compatible Chromium from @sparticuz/chromium there.
+  // Imported dynamically so the ~50MB binary is only pulled in on Vercel, never in
+  // local dev where the system Chrome below is used instead.
+  if (process.env.VERCEL) {
+    const sparticuz = (await import("@sparticuz/chromium")).default;
+    return await chromium.launch({
+      args: sparticuz.args,
+      executablePath: await sparticuz.executablePath(),
+      headless: true,
+    });
+  }
   try {
-    // Use the system Chrome to avoid a separate browser download.
+    // Locally, use the system Chrome to avoid a separate browser download.
     return await chromium.launch({ channel: "chrome" });
   } catch {
     try {
