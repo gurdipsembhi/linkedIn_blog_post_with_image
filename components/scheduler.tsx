@@ -44,30 +44,42 @@ export default function Scheduler() {
   const [drafts, setDrafts] = useState<QueuedDraft[]>([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<Note>(null);
+  // Set when the *initial* schedule load fails, so we can show an error + Retry
+  // instead of wedging on "Loading scheduler…" forever.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  // The queue is secondary: load it best-effort so a queue failure never hides the
+  // scheduler config. The schedule load is the one that gates rendering.
   async function refresh() {
-    const [s, q] = await Promise.all([
-      callApi("/api/schedule", "GET"),
-      callApi("/api/queue", "GET"),
-    ]);
+    const s = await callApi("/api/schedule", "GET");
     setSchedule(s);
+    const q = await callApi("/api/queue", "GET").catch(() => ({ drafts: [] }));
     setDrafts(q.drafts ?? []);
+  }
+
+  async function load() {
+    setLoadError(null);
+    try {
+      await refresh();
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Failed to load the scheduler");
+    }
   }
 
   useEffect(() => {
     let active = true;
     (async () => {
+      setLoadError(null);
       try {
-        const [s, q] = await Promise.all([
-          callApi("/api/schedule", "GET"),
-          callApi("/api/queue", "GET"),
-        ]);
+        const s = await callApi("/api/schedule", "GET");
         if (!active) return;
         setSchedule(s);
+        const q = await callApi("/api/queue", "GET").catch(() => ({ drafts: [] }));
+        if (!active) return;
         setDrafts(q.drafts ?? []);
       } catch (err) {
         if (!active) return;
-        setNote({ kind: "error", message: err instanceof Error ? err.message : "Failed to load" });
+        setLoadError(err instanceof Error ? err.message : "Failed to load the scheduler");
       }
     })();
     return () => {
@@ -125,6 +137,22 @@ export default function Scheduler() {
   }
 
   if (!schedule) {
+    if (loadError) {
+      return (
+        <section className="mt-14 border-t border-zinc-200 pt-8 dark:border-zinc-800">
+          <h2 className="text-lg font-semibold">Daily schedule</h2>
+          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+            Couldn&apos;t load the scheduler: {loadError}
+          </p>
+          <button
+            onClick={load}
+            className="mt-3 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+          >
+            Retry
+          </button>
+        </section>
+      );
+    }
     return <p className="mt-10 text-sm text-zinc-500">Loading scheduler…</p>;
   }
 
