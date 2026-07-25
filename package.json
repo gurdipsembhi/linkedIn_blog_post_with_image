@@ -13,6 +13,7 @@
     "@langchain/core": "^1.2.3",
     "@langchain/langgraph": "^1.4.8",
     "@sparticuz/chromium": "^149.0.0",
+    "@upstash/redis": "^1.38.0",
     "ai": "^7.0.31",
     "next": "16.2.10",
     "playwright-core": "^1.61.1",
